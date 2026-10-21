@@ -1,14 +1,14 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
-// React 19 assigns props on custom elements as *properties* when a matching
-// property exists on the element instance, and only falls back to attributes
-// otherwise. <model-viewer> declares camelCase properties (autoRotate,
-// cameraControls, toneMapping, ...), so the kebab-case names used previously
-// (auto-rotate, camera-controls, tone-mapping) were written to string keys the
-// element never reads - the viewer rendered but ignored every setting.
-// Everything below therefore uses camelCase property names.
+// model-viewer is a custom element: until its module is evaluated, React 19
+// writes camelCase props as (lowercased) attributes, which model-viewer never
+// observes — so camera-controls, auto-rotate, tonemapping etc. were silently
+// dropped and the viewer was not interactive. We only mount the element once
+// it is defined, so React assigns real properties instead. Events are wired
+// natively because React's on* handlers call addEventListener('Load'/'Progress')
+// for custom elements, and those event names never fire.
 declare module 'react' {
   // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace JSX {
@@ -46,21 +46,24 @@ interface ThreeViewerProps {
   autoRotate?: boolean
 }
 
+type ModelViewerElement = HTMLElement & { loaded?: boolean }
+
 export default function ThreeViewer({
   glbUrl,
   previewUrl,
   className = '',
   autoRotate = true,
 }: ThreeViewerProps) {
-  const [loaded, setLoaded] = useState(false)
+  const [ready, setReady] = useState(false)
+  const [loadedSrc, setLoadedSrc] = useState('')
   const [progress, setProgress] = useState(0)
   const [failed, setFailed] = useState<string | null>(null)
-  const [ready, setReady] = useState(false)
+  const viewerRef = useRef<ModelViewerElement | null>(null)
 
-  // Load the model-viewer custom element once, and track when it is upgraded.
-  // React renders <model-viewer> on the first pass; until the module defines the
-  // element it is just an unknown inline element, so we re-render after the
-  // upgrade to make sure the element picks up its properties.
+  const loaded = loadedSrc === glbUrl
+
+  // Load the model-viewer module once and flip `ready` after the custom
+  // element is defined.
   useEffect(() => {
     if (typeof window === 'undefined') return
     let cancelled = false
@@ -76,20 +79,18 @@ export default function ThreeViewer({
       }
     }
 
-    const existing = document.querySelector<HTMLScriptElement>(
-      'script[data-model-viewer]'
-    )
-    if (!existing) {
-      const script = document.createElement('script')
+    let script = document.querySelector<HTMLScriptElement>('script[data-model-viewer]')
+    if (!script) {
+      script = document.createElement('script')
       script.type = 'module'
       script.dataset.modelViewer = 'true'
-      script.src =
-        'https://unpkg.com/@google/model-viewer@4.3.1/dist/model-viewer.min.js'
+      script.src = 'https://unpkg.com/@google/model-viewer@4.3.1/dist/model-viewer.min.js'
+      script.onerror = () => {
+        if (!cancelled) setFailed('Could not load the 3D viewer library.')
+      }
       document.head.appendChild(script)
     }
 
-    // Resolve as soon as the element is defined, so the viewer becomes
-    // interactive even if `load` fired before React attached its listeners.
     customElements.whenDefined('model-viewer').then(markReady).catch(() => {})
 
     return () => {
@@ -97,84 +98,106 @@ export default function ThreeViewer({
     }
   }, [])
 
-  // If the GLB never loads (bad R2 URL, CORS, offline), surface it instead of
-  // spinning forever.
+  // Native listeners: load/error do not bubble and progress is a custom event.
+  useEffect(() => {
+    const el = viewerRef.current
+    if (!ready || !el) return
+
+    const onProgress = (e: Event) => {
+      const detail = (e as CustomEvent<{ totalProgress?: number }>).detail
+      setProgress(Math.round((detail?.totalProgress ?? 0) * 100))
+    }
+    const onLoad = () => {
+      setLoadedSrc(glbUrl)
+      setProgress(100)
+      setFailed(null)
+    }
+    const onError = () => setFailed('Could not load the 3D model file.')
+
+    el.addEventListener('progress', onProgress)
+    el.addEventListener('load', onLoad)
+    el.addEventListener('error', onError)
+    if (el.loaded) onLoad() // already finished before the listeners attached
+
+    return () => {
+      el.removeEventListener('progress', onProgress)
+      el.removeEventListener('load', onLoad)
+      el.removeEventListener('error', onError)
+    }
+  }, [ready, glbUrl])
+
+  // 4 MB models on a slow connection can take a while (and R2/CORS failures
+  // otherwise spin forever), so give up eventually instead of showing 0%.
   useEffect(() => {
     if (loaded || failed) return
     const timer = setTimeout(() => {
       setFailed((prev) => prev ?? 'Model is taking too long to load.')
-    }, 30_000)
+    }, 120_000)
     return () => clearTimeout(timer)
-  }, [loaded, failed])
+  }, [loaded, failed, glbUrl])
 
-  const progressPct = Math.max(0, Math.min(100, Math.round(progress)))
+  const progressPct = Math.max(0, Math.min(100, progress))
 
   return (
     <div
       className={`relative w-full overflow-hidden rounded-2xl ${className}`}
       style={{ background: 'linear-gradient(135deg, #0a0b0f 0%, #0f0f1e 50%, #0a0b0f 100%)' }}
     >
-      <model-viewer
-        src={glbUrl}
-        {...(previewUrl ? { poster: previewUrl } : {})}
-        alt="3D model preview"
-        loading="eager"
-        reveal="auto"
-        toneMapping="aces"
-        shadowIntensity="1.6"
-        shadowSoftness="1.0"
-        exposure="1.3"
-        cameraControls
-        autoRotate={autoRotate}
-        autoRotateDelay="800"
-        rotationPerSecond="16deg"
-        environmentImage="neutral"
-        interactionPrompt="none"
-        style={{
-          width: '100%',
-          height: '100%',
-          minHeight: '520px',
-          backgroundColor: 'transparent',
-          '--poster-color': 'transparent',
-        } as React.CSSProperties}
-        onProgress={(e) => {
-          const ce = e as unknown as CustomEvent<{ totalProgress: number }>
-          setProgress(Math.round((ce.detail?.totalProgress ?? 0) * 100))
-        }}
-        onLoad={() => {
-          setLoaded(true)
-          setFailed(null)
-        }}
-        onError={() => setFailed('Could not load the 3D model file.')}
-      >
-        {/* model-viewer's progress-bar slot shows while the model downloads. */}
-        <div slot="progress-bar" className="mv-progress-wrap">
-          {previewUrl && (
-            // Dynamic R2 preview URL — next/image would need remotePatterns config
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={previewUrl} alt="" className="mv-progress-poster" />
-          )}
-          <div className="mv-progress-content">
-            <div className="mv-progress-ring">
-              <svg viewBox="0 0 64 64" className="mv-progress-svg">
-                <circle cx="32" cy="32" r="28" fill="none" stroke="#ffffff10" strokeWidth="4"/>
-                <circle
-                  cx="32" cy="32" r="28"
-                  fill="none" stroke="#7c3aed" strokeWidth="4"
-                  strokeDasharray={`${(progressPct / 100) * 175.9} 175.9`}
-                  strokeLinecap="round"
-                  style={{ transition: 'stroke-dasharray 0.3s ease' }}
-                />
-              </svg>
-              <span className="mv-progress-pct">{progressPct}%</span>
+      {ready && (
+        <model-viewer
+          ref={viewerRef}
+          src={glbUrl}
+          {...(previewUrl ? { poster: previewUrl } : {})}
+          alt="3D model preview"
+          loading="eager"
+          reveal="auto"
+          toneMapping="aces"
+          shadowIntensity="1.6"
+          shadowSoftness="1.0"
+          exposure="1.3"
+          cameraControls
+          autoRotate={autoRotate}
+          autoRotateDelay="800"
+          rotationPerSecond="16deg"
+          environmentImage="neutral"
+          interactionPrompt="none"
+          style={{
+            width: '100%',
+            height: '100%',
+            minHeight: '520px',
+            backgroundColor: 'transparent',
+            '--poster-color': 'transparent',
+          } as React.CSSProperties}
+        >
+          {/* model-viewer's progress-bar slot shows while the model downloads. */}
+          <div slot="progress-bar" className="mv-progress-wrap">
+            {previewUrl && (
+              // Dynamic R2 preview URL — next/image would need remotePatterns config
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={previewUrl} alt="" className="mv-progress-poster" />
+            )}
+            <div className="mv-progress-content">
+              <div className="mv-progress-ring">
+                <svg viewBox="0 0 64 64" className="mv-progress-svg">
+                  <circle cx="32" cy="32" r="28" fill="none" stroke="#ffffff10" strokeWidth="4"/>
+                  <circle
+                    cx="32" cy="32" r="28"
+                    fill="none" stroke="#7c3aed" strokeWidth="4"
+                    strokeDasharray={`${(progressPct / 100) * 175.9} 175.9`}
+                    strokeLinecap="round"
+                    style={{ transition: 'stroke-dasharray 0.3s ease' }}
+                  />
+                </svg>
+                <span className="mv-progress-pct">{progressPct}%</span>
+              </div>
+              <p className="mv-progress-label">Loading model</p>
             </div>
-            <p className="mv-progress-label">Loading model</p>
           </div>
-        </div>
-      </model-viewer>
+        </model-viewer>
+      )}
 
-      {/* Overlay for the window before the custom element is upgraded. Without
-          this the element is an unknown inline box and the viewer looks blank. */}
+      {/* Overlay until the model is visible. pointer-events stays off so the
+          viewer is draggable the moment it renders. */}
       {!loaded && (
         <div className="viewer-overlay">
           {failed ? (
@@ -191,7 +214,7 @@ export default function ThreeViewer({
                 {ready ? 'Loading model…' : 'Starting 3D viewer…'}
               </span>
               <span className="viewer-overlay-hint">
-                You can download the file below while it loads.
+                {ready ? `${progressPct}% · drag to rotate once it appears` : 'Warming up the renderer'}
               </span>
             </>
           )}
