@@ -1,11 +1,11 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Sparkles, Send, Copy, Check, ArrowDownToLine, Loader2 } from 'lucide-react';
+import { Send, Copy, Check, ArrowDownToLine, Loader2 } from 'lucide-react';
 
 type Msg = { role: 'user' | 'assistant'; content: string; script?: string | null };
 
-const IDEAS = ['low-poly tree', 'wooden chair', 'red sports car', 'medieval castle', 'coffee mug', 'robot toy'];
+const IDEAS = ['low-poly tree', 'wooden chair'];
 
 export default function AiChat() {
   const [msgs, setMsgs] = useState<Msg[]>([]);
@@ -56,9 +56,7 @@ export default function AiChat() {
   return (
     <section className="ai-chat">
       <div className="ai-chat-head">
-        <span className="ai-chat-badge"><Sparkles size={14} /> AI sculptor</span>
         <h2>Describe it — get a Blender script</h2>
-        <p>Powered by Groq. Output follows the worker rules (geometry only, Blender 5.2-safe).</p>
       </div>
 
       {msgs.length > 0 && (
