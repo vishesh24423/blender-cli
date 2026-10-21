@@ -253,33 +253,6 @@ body {
   margin-bottom: 8px;
 }
 
-.quality-selector { display: flex; flex-direction: column; }
-
-.quality-options {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.quality-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  border-radius: var(--radius-full);
-  border: 1px solid var(--ghost-border);
-  background: var(--surface-container);
-  color: var(--text-secondary);
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  white-space: nowrap;
-}
-
-.quality-chip:hover { background: var(--surface-high); color: var(--text-primary); }
-.quality-chip--active { border-color: var(--primary); background: var(--primary-dim); color: var(--primary); }
-
 .quality-hint {
   font-size: 12px;
   color: var(--text-muted);
@@ -1351,8 +1324,6 @@ body {
   .features-grid { grid-template-columns: 1fr; }
   .downloads-grid { grid-template-columns: 1fr 1fr; }
   .viewer-3d { height: 300px; }
-  .quality-options { gap: 6px; }
-  .quality-chip { padding: 6px 12px; font-size: 12px; }
   .format-chip { padding: 6px 12px; font-size: 12px; }
 }
 

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Check, ArrowRight, AlertTriangle, Zap, Layers, Clapperboard } from 'lucide-react';
+import { Check, ArrowRight, AlertTriangle } from 'lucide-react';
 import type { OutputFormat } from '@/lib/types';
 import { extractScript } from '@/lib/script-extract';
 
@@ -50,7 +50,7 @@ export default function ScriptSubmitForm() {
     const router = useRouter();
     const [script, setScript] = useState('');
     const [formats, setFormats] = useState<OutputFormat[]>(['glb']);
-    const [quality, setQuality] = useState<'draft' | 'standard' | 'cinematic'>('standard');
+    const quality = 'standard';
     const [phase, setPhase] = useState<SubmitPhase>('idle');
     const [error, setError] = useState<string | null>(null);
 
@@ -130,32 +130,6 @@ export default function ScriptSubmitForm() {
 
     return (
         <div className="submit-form">
-            {/* Quality Preset Selector */}
-            <div className="quality-selector">
-                <p className="section-label">Quality</p>
-                <div className="quality-options">
-                    {(['draft', 'standard', 'cinematic'] as const).map((q) => (
-                        <button
-                            key={q}
-                            type="button"
-                            onClick={() => setQuality(q)}
-                            className={`quality-chip ${quality === q ? 'quality-chip--active' : ''}`}
-                        >
-                            {q === 'draft'     && <Zap size={13} />}
-                            {q === 'standard'  && <Layers size={13} />}
-                            {q === 'cinematic' && <Clapperboard size={13} />}
-                            {' '}
-                            {q.charAt(0).toUpperCase() + q.slice(1)}
-                        </button>
-                    ))}
-                </div>
-                <p className="quality-hint">
-                    {quality === 'draft'     && 'Fast render, basic lighting · ~30s'}
-                    {quality === 'standard'  && 'HDRI + PBR clearcoat + bloom · ~90s'}
-                    {quality === 'cinematic' && '4K + DOF + volumetric · ~4min'}
-                </p>
-            </div>
-
             {/* Code Editor */}
             <div className="editor-wrapper">
                 <div className="editor-header">
