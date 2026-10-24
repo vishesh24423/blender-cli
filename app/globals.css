@@ -1372,6 +1372,15 @@ body {
 .ai-btn--ghost { background: var(--surface-high); color: var(--text-secondary); }
 .ai-typing { display: inline-flex; align-items: center; gap: 8px; }
 .ai-spin { animation: spin 0.8s linear infinite; }
+.ai-model-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ai-model-label { font-size: 12px; font-weight: 600; color: var(--text-muted); }
+.ai-model-select {
+  padding: 8px 12px; border-radius: var(--radius); font-size: 13px;
+  background: var(--surface-lowest); border: 1px solid var(--ghost-border);
+  color: var(--text-primary); outline: none; cursor: pointer;
+}
+.ai-model-select:disabled { opacity: 0.5; cursor: not-allowed; }
+.ai-model-note { font-size: 12px; color: var(--text-muted); }
 .ai-input-row { display: flex; gap: 8px; }
 .ai-input {
   flex: 1; padding: 12px 16px; border-radius: var(--radius-lg);

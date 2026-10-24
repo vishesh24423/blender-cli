@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Send, Copy, Check, ArrowDownToLine, Loader2 } from 'lucide-react';
 
 type Msg = { role: 'user' | 'assistant'; content: string; script?: string | null };
+type Provider = 'groq' | 'dahl';
 
 const IDEAS = ['low-poly tree', 'wooden chair'];
 
@@ -13,6 +14,7 @@ export default function AiChat() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [provider, setProvider] = useState<Provider>('groq');
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [msgs, busy]);
@@ -27,8 +29,8 @@ export default function AiChat() {
       const res = await fetch('/api/ai-chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: next.map((m) => ({ role: m.role, content: m.content })) }),
-        signal: AbortSignal.timeout(150000),
+        body: JSON.stringify({ messages: next.map((m) => ({ role: m.role, content: m.content })), provider }),
+        signal: AbortSignal.timeout(provider === 'dahl' ? 290000 : 150000),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'AI request failed');
@@ -84,6 +86,21 @@ export default function AiChat() {
       )}
 
       {error && <div className="submit-error">⚠ {error}</div>}
+
+      <div className="ai-model-row">
+        <label htmlFor="ai-model" className="ai-model-label">Model</label>
+        <select
+          id="ai-model"
+          className="ai-model-select"
+          value={provider}
+          onChange={(e) => setProvider(e.target.value as Provider)}
+          disabled={busy}
+        >
+          <option value="groq">Groq — fast (default)</option>
+          <option value="dahl">GLM-5.3-Flash — quality</option>
+        </select>
+        {provider === 'dahl' && <span className="ai-model-note">Quality script but takes time.</span>}
+      </div>
 
       <div className="ai-input-row">
         <input
