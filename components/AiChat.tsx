@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Send, Copy, Check, ArrowDownToLine, Loader2 } from 'lucide-react';
 
 type Msg = { role: 'user' | 'assistant'; content: string; script?: string | null };
-type Provider = 'groq' | 'dahl';
+type Provider = 'groq' | 'dahl' | 'dahl-deepseek';
 
 const IDEAS = ['low-poly tree', 'wooden chair'];
 
@@ -30,7 +30,7 @@ export default function AiChat() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: next.map((m) => ({ role: m.role, content: m.content })), provider }),
-        signal: AbortSignal.timeout(provider === 'dahl' ? 290000 : 150000),
+        signal: AbortSignal.timeout(provider === 'groq' ? 150000 : 290000),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'AI request failed');
@@ -98,8 +98,9 @@ export default function AiChat() {
         >
           <option value="groq">Groq — fast (default)</option>
           <option value="dahl">GLM-5.3-Flash — quality</option>
+          <option value="dahl-deepseek">DeepSeek-V4-Flash — quality</option>
         </select>
-        {provider === 'dahl' && <span className="ai-model-note">Quality script but takes time.</span>}
+        {provider !== 'groq' && <span className="ai-model-note">Quality script but takes time.</span>}
       </div>
 
       <div className="ai-input-row">

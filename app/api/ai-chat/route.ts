@@ -18,13 +18,20 @@ const PROVIDERS = {
     model: process.env.DAHL_MODEL || 'zai-org/GLM-5.3-Flash',
     label: 'GLM',
   },
+  'dahl-deepseek': {
+    url: 'https://inference.dahl.global/v1/chat/completions',
+    key: process.env.DAHL_API_KEY,
+    model: 'deepseek-ai/DeepSeek-V4-Flash-0731',
+    label: 'DeepSeek',
+  },
 } as const;
 
 export async function POST(req: NextRequest) {
   const { messages, provider } = await req.json();
   if (!Array.isArray(messages) || messages.length === 0)
     return NextResponse.json({ error: 'messages[] required' }, { status: 400 });
-  const p = PROVIDERS[provider === 'dahl' ? 'dahl' : 'groq'];
+  const key: 'groq' | 'dahl' | 'dahl-deepseek' = provider === 'dahl' || provider === 'dahl-deepseek' ? provider : 'groq';
+  const p = PROVIDERS[key];
   if (!p.key) return NextResponse.json({ error: `AI not configured (missing ${p.label} API key)` }, { status: 500 });
 
   let system = '';
