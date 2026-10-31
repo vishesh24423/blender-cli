@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Send, Copy, Check, ArrowDownToLine, Loader2 } from 'lucide-react';
 
 type Msg = { role: 'user' | 'assistant'; content: string; script?: string | null };
-type Provider = 'groq' | 'dahl' | 'dahl-deepseek';
+type Provider = 'groq' | 'inception';
 
 const IDEAS = ['low-poly tree', 'wooden chair'];
 
@@ -97,10 +97,8 @@ export default function AiChat() {
           disabled={busy}
         >
           <option value="groq">Groq — fast (default)</option>
-          <option value="dahl">GLM-5.3-Flash — quality</option>
-          <option value="dahl-deepseek">DeepSeek-V4-Flash — quality</option>
+          <option value="inception">Mercury-3 — Inception Labs</option>
         </select>
-        {provider !== 'groq' && <span className="ai-model-note">Quality script but takes time.</span>}
       </div>
 
       <div className="ai-input-row">
