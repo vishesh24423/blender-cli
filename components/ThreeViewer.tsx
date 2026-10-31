@@ -62,6 +62,11 @@ export default function ThreeViewer({
 
   const loaded = loadedSrc === glbUrl
 
+  // model-viewer fetches the GLB with fetch(), so a cross-origin R2 URL needs
+  // CORS headers the public bucket doesn't send. /r2/* is proxied to R2 by
+  // next.config.ts, making the request same-origin.
+  const src = glbUrl.replace(/^https:\/\/[^/]+\.r2\.dev\//, '/r2/')
+
   // Load the model-viewer module once and flip `ready` after the custom
   // element is defined.
   useEffect(() => {
@@ -146,7 +151,7 @@ export default function ThreeViewer({
       {ready && (
         <model-viewer
           ref={viewerRef}
-          src={glbUrl}
+          src={src}
           {...(previewUrl ? { poster: previewUrl } : {})}
           alt="3D model preview"
           loading="eager"
@@ -204,7 +209,7 @@ export default function ThreeViewer({
             <>
               <span className="viewer-overlay-title">Viewer unavailable</span>
               <span className="viewer-overlay-hint">{failed}</span>
-              <a href={glbUrl} download className="viewer-overlay-link">
+              <a href={src} download className="viewer-overlay-link">
                 Download the GLB instead
               </a>
             </>
@@ -231,7 +236,7 @@ export default function ThreeViewer({
           <span className="text-white/40 text-xs">Drag to rotate · Scroll to zoom · Right-click to pan</span>
         </div>
         <a
-          href={glbUrl}
+          href={src}
           download
           className="text-xs text-purple-400 hover:text-purple-300 transition-colors flex items-center gap-1 pointer-events-auto"
         >
